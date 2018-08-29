@@ -1,0 +1,26 @@
+version: "2"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile-api
+    volumes:
+      - "/srv/interpro:/data"
+    command: gunicorn -k gevent -b 0.0.0.0:8000 yascript.application:app
+    depends_on:
+      - celery
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile-celery
+    volumes:
+      - "/srv/interpro:/data"
+    command: celery -A interproscan_web.application:celery worker -B
+    depends_on:
+      - redis
+      - rabbitmq
+  redis:
+    image: redis
+  rabbitmq:
+    image: rabbitmq
