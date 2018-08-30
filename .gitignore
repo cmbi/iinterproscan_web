@@ -1,6 +1,8 @@
 # Coverage
 .coverage
 
+# Python
+*.py[a-z]
 
 # Interpro
 temp/
