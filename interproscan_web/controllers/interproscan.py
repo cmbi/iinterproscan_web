@@ -14,14 +14,13 @@ _log = logging.getLogger(__name__)
 
 
 class Interproscan:
-    def __init__(self, interproscan_path=None, storage_dir=None, interproscan_image=None):
+    def __init__(self, interproscan_path=None, interproscan_image=None):
         self.interproscan_path = interproscan_path
-        self.storage_dir = storage_dir
         self.interproscan_image = interproscan_image
 
     def run(self, sequences):
-        fasta_path = os.path.join(self.storage_dir, '%s.fa' % sequence_id)
-        xml_path = os.path.join(self.storage_dir, '%s.xml' % sequence_id)
+        fasta_path = tempfile.mktemp()
+        xml_path = tempfile.mktemp()
         container_name = "interproscan_%s" % str(uuid.uuid4())
 
         write_fasta(fasta_path, {get_sequence_id(sequence): sequence for sequence in sequences})
