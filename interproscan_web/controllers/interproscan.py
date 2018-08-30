@@ -3,9 +3,11 @@ import os
 import subprocess
 import logging
 import uuid
+import xml.etree.ElementTree as ET
 
 from interproscan_web.controllers.fasta import write_fasta
 from interproscan_web.controllers.sequence import get_sequence_id
+from interproscan_web.controllers.xml import split_proteins
 
 
 _log = logging.getLogger(__name__)
@@ -17,13 +19,12 @@ class Interproscan:
         self.storage_dir = storage_dir
         self.interproscan_image = interproscan_image
 
-    def run(self, sequence):
-        sequence_id = get_sequence_id(sequence)
+    def run(self, sequences):
         fasta_path = os.path.join(self.storage_dir, '%s.fa' % sequence_id)
         xml_path = os.path.join(self.storage_dir, '%s.xml' % sequence_id)
         container_name = "interproscan_%s" % str(uuid.uuid4())
 
-        write_fasta(fasta_path, {sequence_id: sequence})
+        write_fasta(fasta_path, {get_sequence_id(sequence): sequence for sequence in sequences})
 
         try:
             self._execute(['docker', 'create', '--name',
@@ -43,9 +44,7 @@ class Interproscan:
             self._execute(['docker', 'cp',
                            '%s:/data/%s' %(container_name, os.path.basename(xml_path)), xml_path])
 
-            with open(xml_path, 'r') as f:
-                xml_str = f.read()
-                return xml_str
+            return split_proteins(xml_path)
         finally:
             for p in [fasta_path, xml_path]:
                 if os.path.isfile(p):

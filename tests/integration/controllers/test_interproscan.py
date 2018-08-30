@@ -2,7 +2,7 @@ import tempfile
 import os
 import shutil
 
-from nose.tools import ok_, with_setup
+from nose.tools import eq_, with_setup
 
 from interproscan_web.controllers.interproscan import interproscan
 from interproscan_web import default_settings as settings
@@ -21,7 +21,11 @@ def teardown():
 
 @with_setup(setup, teardown)
 def test_run():
-    sequence = "TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN"
+    sequences = ["TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN",
+                 "MVLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDR" +
+                 "VKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQ" +
+                 "SHATKHKIPIKYLEFISEAIIHVLHSRHPGNFGADAQGAMNKALEL" +
+                 "FRKDIAAKYKELGYQG"]
 
-    content = interproscan.run(sequence)
-    ok_(len(content) > 0)
+    d = interproscan.run(sequences)
+    eq_(len(d), 2)
