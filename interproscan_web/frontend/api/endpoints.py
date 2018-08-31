@@ -17,9 +17,8 @@ _log = logging.getLogger(__name__)
 
 @bp.route('/run/', methods=['POST'], strict_slashes=False)
 def run():
-    _log.debug("run call")
-
     sequence = request.form.get('sequence', '')
+
     if len(sequence) <= 0:
         return _wrap_error("No sequence"), 400
 
@@ -51,8 +50,8 @@ def result(job_id):
 
 def _wrap_error(msg):
     err = ET.Element('error')
-    desc = err = ET.Element('description')
+    desc = ET.Element('description')
     err.append(desc)
     desc.text = msg
 
-    return ET.tostring(err)
+    return ET.tostring(err).decode('ascii')
