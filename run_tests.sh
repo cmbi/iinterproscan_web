@@ -34,6 +34,6 @@ esac
 
 _nose_opts="-v -a !disabled --with-coverage --cover-inclusive --cover-package interproscan_web"
 _dc_opts="-f docker-compose.yml -f docker-compose-dev.yml"
-_command="docker-compose $_dc_opts run $_dc_run_opts celery nosetests $_nose_opts $_tests"
+_command="docker-compose $_dc_opts run $_dc_run_opts api nosetests $_nose_opts $_tests"
 echo $_command
 $_command

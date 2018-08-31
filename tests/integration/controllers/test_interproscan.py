@@ -8,7 +8,6 @@ from interproscan_web import default_settings as settings
 
 
 def setup():
-    interproscan.interproscan_image = settings.INTERPROSCAN_IMAGE
     interproscan.interproscan_path = settings.INTERPROSCAN_PATH
 
 

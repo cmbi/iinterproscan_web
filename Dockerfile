@@ -1,9 +1,8 @@
-FROM python:3.5
+FROM interproscan
 
-# Install docker interface
+# Install pip
 RUN apt-get update
-RUN apt-get install -y curl
-RUN curl -sSL https://get.docker.com/ | sh
+RUN apt-get install -y python3-pip
 
 # Python requirements
 RUN mkdir -p /usr/src/app

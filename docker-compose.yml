@@ -4,24 +4,9 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile-api
+      dockerfile: Dockerfile
     volumes:
       - "/srv/interpro:/data"
-    command: gunicorn -k gevent -b 0.0.0.0:8000 yascript.application:app
-    depends_on:
-      - celery
-  celery:
-    build:
-      context: .
-      dockerfile: Dockerfile-celery
-    volumes:
-      - "/srv/interpro:/data"
-      - "/var/run/docker.sock:/var/run/docker.sock"
-    command: celery -A interproscan_web.application:celery worker -B
-    depends_on:
-      - redis
-      - rabbitmq
-  redis:
-    image: redis
-  rabbitmq:
-    image: rabbitmq
+    ports:
+      - "8000:8000"
+    command: python3 server.py

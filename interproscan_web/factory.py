@@ -1,8 +1,10 @@
 import os
 import logging
 
-from celery import Celery
 from flask import Flask
+
+from interproscan_web.controllers.interproscan import interproscan
+from interproscan_web.controllers.job import job_manager
 
 
 def create_app(settings=None):
@@ -23,27 +25,8 @@ def create_app(settings=None):
     from interproscan_web.frontend.api.endpoints import bp as api_bp
     app.register_blueprint(api_bp)
 
+    interproscan.interproscan_path = app.config['INTERPROSCAN_PATH']
+
+    job_manager.data_dir = app.config['DATADIR_PATH']
+
     return app
-
-
-def create_celery_app(app):
-    app = app or create_app()
-
-    celery = Celery(__name__,
-                    backend=app.config['CELERY_RESULT_BACKEND'],
-                    broker=app.config['CELERY_BROKER_URL'])
-    celery.conf.update(app.config)
-    TaskBase = celery.Task
-
-    class ContextTask(TaskBase):
-        abstract = True
-
-        def __call__(self, *args, **kwargs):
-            with app.app_context():
-                return TaskBase.__call__(self, *args, **kwargs)
-
-    celery.Task = ContextTask
-
-    import interproscan_web.tasks
-
-    return celery

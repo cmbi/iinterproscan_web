@@ -1,85 +1,80 @@
 import os
-from bz2 import BZ2File
+import bz2
+import logging
 
-from celery.result import AsyncResult
-from flask import current_app as app
 from lockfile import LockFile
 
-from interproscan_web.controllers.interproscan import interproscan
+from interproscan_web.controllers.worker import Worker
 from interproscan_web.controllers.sequence import get_sequence_id
-from interproscan_web.tasks import build_for
+from interproscan_web.models.error import NotDoneError, InitError
+
+_log = logging.getLogger(__name__)
 
 
+class JobManager:
+    def __init__(self, data_dir=None):
+        self.data_dir = data_dir
+        self._worker = Worker()
+        self._worker.start()
 
-def get_result_path(sequence_id):
-    return os.path.join(_get_dir_path_for(sequence_id), 'result.xml.bz2')
+    def _get_lock(self, sequence_id):
+        if self.data_dir is None:
+            raise InitError("data directory is not set")
 
+        path = os.path.join(self.data_dir, "%s.lock" % sequence_id)
 
-def _get_task_path(sequence_id):
-    return os.path.join(_get_dir_path_for(sequence_id), 'celery_task')
+        _log.debug("locking on {}".format(path))
 
+        return LockFile(path)
 
-def _get_dir_path_for(sequence_id):
-    return os.path.join(app.config['DATADIR_PATH'], sequence_id)
+    def _get_result_path(self, sequence_id):
+        if self.data_dir is None:
+            raise InitError("data directory is not set")
 
+        return os.path.join(self.data_dir, "%s.xml.bz2" % sequence_id)
 
-def _get_lock_for(sequence_id):
-    lock_dir_path = _get_dir_path_for(sequence_id)
+    def submit(self, sequence):
+        sequence_id = get_sequence_id(sequence)
+        output_path = self._get_result_path(sequence_id)
 
-    if not os.path.isdir(lock_dir_path):
-        os.mkdir(lock_dir_path)
+        if not os.path.isfile(output_path) and not self._worker.working_on_sequence_id(sequence_id):
+            self._worker.submit(sequence)
 
-    return LockFile(lock_dir_path)
-
-
-def submit_if_needed(sequence):
-    sequence_id = get_sequence_id(sequence)
-
-    output_path = get_result_path(sequence_id)
-    task_path = _get_task_path(sequence_id)
-
-    with _get_lock_for(sequence_id):
-        from interproscan_web.tasks import build_for
-        result = build_for.delay(sequence)
-
-        with open(task_path, 'w') as f:
-            f.write(result.task_id)
-    return sequence_id
+        return sequence_id
 
 
-def get_status(sequence_id):
-    result_path = get_result_path(sequence_id)
+    def get_status(self, sequence_id):
+        result_path = self._get_result_path(sequence_id)
 
-    with _get_lock_for(sequence_id):
-        if os.path.isfile(result_path):
+        if os.path.isfile(result_path) or self._worker.result_for_sequence_id(sequence_id) is not None:
             return 'SUCCESS'
-
-        if os.path.isfile(task_path):
-            with open(task_path, 'r') as f:
-                task_id = f.read()
-
-            result = AsyncResult(task_id)
-            return result.status
-        else:
+        elif self._worker.working_on_sequence_id(sequence_id):
+            return 'STARTED'
+        elif self._worker.exception_for_sequence_id(sequence_id) is not None:
+            _log.error("failure for {}: {}".format(sequence_id, self._worker.exception_for_sequence_id(sequence_id)))
+            return 'FAILURE'
+        elif self._worker.has_sequence_id(sequence_id):
             return 'PENDING'
-
-
-def get_result(sequence_id):
-    result_path = get_result_path(sequence_id)
-
-    with _get_lock_for(sequence_id):
-        if os.path.isfile(result_path):
-            with BZ2File(result_path, 'r') as f:
-                return f.read()
-
-        if os.path.isfile(task_path):
-            with open(task_path, 'r') as f:
-                task_id = f.read()
-
-            result = AsyncResult(task_id)
-            content = result.get()
-            with BZ2File(result_path, 'w') as f:
-                f.write(content)
-            return content
         else:
-            raise FileNotFoundError(task_path)
+            return 'NOT_FOUND'
+
+
+    def get_result(self, sequence_id):
+        result_path = self._get_result_path(sequence_id)
+        result = self._worker.result_for_sequence_id(sequence_id)
+
+        if os.path.isfile(result_path):
+            with self._get_lock(sequence_id):
+                with bz2.open(result_path, 'rt') as f:
+                    return f.read()
+
+        elif result is not None:
+            with self._get_lock(sequence_id):
+                with bz2.open(result_path, 'wt') as f:
+                    f.write(result)
+
+            return result
+        else:
+            raise NotDoneError(sequence_id)
+
+job_manager = JobManager()

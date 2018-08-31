@@ -1,11 +1,7 @@
 version: "2"
 
 services:
-  celery:
-    volumes:
-      - ".:/usr/src/app"
-    command: watchmedo auto-restart -d /usr/src/app -p "*.py" -D -R -- celery -A yascript.application:celery worker -B
   api:
     volumes:
       - ".:/usr/src/app"
-    command: watchmedo auto-restart -d /usr/src/app -p "*.py" -D -R -- gunicorn -k gevent -b 0.0.0.0:7000 yascript.application:app
+    command: watchmedo auto-restart -d /usr/src/app -p "*.py" -D -R -- python3 server.py
