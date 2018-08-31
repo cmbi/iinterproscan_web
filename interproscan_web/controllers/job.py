@@ -33,6 +33,19 @@ class JobManager:
 
         return os.path.join(self.data_dir, "%s.xml.bz2" % sequence_id)
 
+
+    def store(self, sequence_id, results):
+        result_path = self._get_result_path(sequence_id)
+        with self._get_lock(sequence_id):
+            with bz2.open(result_path, 'wt') as f:
+                f.write(result)
+
+    def load(self, sequence_id):
+        result_path = self._get_result_path(sequence_id)
+        with self._get_lock(sequence_id):
+            with bz2.open(result_path, 'rt') as f:
+                return f.read()
+
     def submit(self, sequence):
         sequence_id = get_sequence_id(sequence)
         output_path = self._get_result_path(sequence_id)
@@ -64,14 +77,10 @@ class JobManager:
         result = self._worker.result_for_sequence_id(sequence_id)
 
         if os.path.isfile(result_path):
-            with self._get_lock(sequence_id):
-                with bz2.open(result_path, 'rt') as f:
-                    return f.read()
+            return load(sequence_id)
 
         elif result is not None:
-            with self._get_lock(sequence_id):
-                with bz2.open(result_path, 'wt') as f:
-                    f.write(result)
+            self.store(sequence_id, result)
 
             return result
         else:

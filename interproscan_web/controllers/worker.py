@@ -55,10 +55,13 @@ class Worker(Thread):
             if len(self._working_sequences) <= 0:
                 continue
 
+            from interproscan_web.controllers.job import job_manager
+
             try:
                 results = interproscan.run(self._working_sequences)
                 for sequence_id in results:
                     self._results[sequence_id] = results[sequence_id]
+                    job_manager.store(sequence_id, self._results[sequence_id])
             except Exception as e:
                 with self._lock:
                     for sequence in self._working_sequences:
