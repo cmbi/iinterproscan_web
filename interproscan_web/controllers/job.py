@@ -38,10 +38,13 @@ class JobManager:
         result_path = self._get_result_path(sequence_id)
         with self._get_lock(sequence_id):
             with bz2.open(result_path, 'wt') as f:
-                f.write(result)
+                f.write(results)
 
     def load(self, sequence_id):
         result_path = self._get_result_path(sequence_id)
+
+        _log.debug("loading from {}".format(result_path))
+
         with self._get_lock(sequence_id):
             with bz2.open(result_path, 'rt') as f:
                 return f.read()
@@ -60,7 +63,7 @@ class JobManager:
         result_path = self._get_result_path(sequence_id)
 
         if os.path.isfile(result_path) or self._worker.result_for_sequence_id(sequence_id) is not None:
-            return 'SUCCESS'
+            return 'FINISHED'
         elif self._worker.working_on_sequence_id(sequence_id):
             return 'STARTED'
         elif self._worker.exception_for_sequence_id(sequence_id) is not None:
@@ -77,7 +80,7 @@ class JobManager:
         result = self._worker.result_for_sequence_id(sequence_id)
 
         if os.path.isfile(result_path):
-            return load(sequence_id)
+            return self.load(sequence_id)
 
         elif result is not None:
             self.store(sequence_id, result)
