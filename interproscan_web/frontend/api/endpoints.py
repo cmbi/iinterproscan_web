@@ -6,6 +6,7 @@ from flask import Blueprint, request
 from flask.json import jsonify
 
 from interproscan_web.controllers.job import job_manager
+from interproscan_web.controllers.sequence import is_sequence
 
 
 bp = Blueprint('api', __name__, url_prefix='/api')
@@ -21,6 +22,9 @@ def run():
     sequence = request.form.get('sequence', '')
     if len(sequence) <= 0:
         return _wrap_error("No sequence"), 400
+
+    if not is_sequence(sequence):
+        return _wrap_error("Invalid sequence"), 400
 
     return job_manager.submit(sequence)
 
